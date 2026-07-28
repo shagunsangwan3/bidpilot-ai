@@ -1,21 +1,24 @@
+import os
+
 from dotenv import load_dotenv
-from pydantic_ai import Agent
+from google import genai
 
 load_dotenv()
 
-agent = Agent(
-    "openai:gpt-4o-mini"
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
 )
+
 
 async def generate_proposal(
     job_title: str,
     job_description: str,
-    budget: str
+    budget: str,
 ):
     prompt = f"""
-You are an expert Upwork freelancer.
+You are an expert Upwork and Freelancer proposal writer.
 
-Write a professional proposal.
+Write a professional proposal for the following project.
 
 Job Title:
 {job_title}
@@ -26,9 +29,20 @@ Job Description:
 Budget:
 {budget}
 
-Keep it concise, personalized and persuasive.
+Requirements:
+- Professional tone
+- Personalized
+- Mention understanding of the client's requirements
+- Explain how the project will be completed
+- Mention experience with AI, Python, FastAPI, React and Data Science where relevant
+- End with a call to action
+- Don't use markdown
+- Don't use bullet points unless necessary
 """
 
-    result = await agent.run(prompt)
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+    )
 
-    return result.output
+    return response.text
