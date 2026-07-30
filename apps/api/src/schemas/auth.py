@@ -40,3 +40,7 @@ class UpdateProfileRequest(BaseModel):
     city: Optional[str] = None
     address: Optional[str] = None
     zip_code: Optional[str] = None
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str

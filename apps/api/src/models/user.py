@@ -49,6 +49,16 @@ class User(Base):
     profile_picture_path = Column(String(500), nullable=True)
     cover_image_path = Column(String(500), nullable=True)
 
+    # --- Security ---
+    password_changed_at = Column(DateTime(timezone=True), nullable=True)
+    # Bumped whenever the user changes their password or asks to log out of
+    # other sessions. Every issued JWT carries the token_version it was signed
+    # with; get_current_user() rejects tokens whose version doesn't match the
+    # user's current one. This is the actual revocation mechanism — JWTs are
+    # stateless and can't otherwise be individually invalidated before they
+    # expire.
+    token_version = Column(Integer, nullable=False, default=1, server_default="1")
+
     updated_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
