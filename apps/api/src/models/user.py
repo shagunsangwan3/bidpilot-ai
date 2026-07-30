@@ -1,5 +1,7 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Date, Text, DateTime
+from sqlalchemy.sql import func
 from src.database import Base
+
 
 class User(Base):
     __tablename__ = "users"
@@ -8,3 +10,47 @@ class User(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
+
+    # --- Profile module ---
+    # All new columns are nullable: this table already exists in deployed
+    # databases (created via Base.metadata.create_all(), which never alters
+    # existing tables), so every one of these is backfilled via migration
+    # rather than assumed to exist with a default on old rows.
+    username = Column(String(50), unique=True, nullable=True, index=True)
+
+    mobile_number = Column(String(20), nullable=True)
+    alt_mobile_number = Column(String(20), nullable=True)
+    country_code = Column(String(8), nullable=True)
+
+    date_of_birth = Column(Date, nullable=True)
+    gender = Column(String(30), nullable=True)
+
+    company = Column(String(150), nullable=True)
+    designation = Column(String(150), nullable=True)
+    department = Column(String(150), nullable=True)
+
+    website = Column(String(255), nullable=True)
+    linkedin = Column(String(255), nullable=True)
+    twitter = Column(String(255), nullable=True)
+    github = Column(String(255), nullable=True)
+
+    bio = Column(String(280), nullable=True)
+    description = Column(Text, nullable=True)
+
+    timezone = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    city = Column(String(100), nullable=True)
+    address = Column(String(255), nullable=True)
+    zip_code = Column(String(20), nullable=True)
+
+    # Stored the same way attachments are — a path on local disk, served back
+    # through an authenticated endpoint rather than a public URL.
+    profile_picture_path = Column(String(500), nullable=True)
+    cover_image_path = Column(String(500), nullable=True)
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
