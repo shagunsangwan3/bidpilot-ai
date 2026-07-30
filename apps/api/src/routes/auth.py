@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from src.core.auth import get_current_user
-from src.schemas.auth import RegisterRequest, LoginRequest
+from src.schemas.auth import RegisterRequest, LoginRequest, UpdateProfileRequest
 from src.models.user import User
 from src.core.dependencies import get_db
 from src.models.subscription import Subscription
@@ -28,10 +28,13 @@ def register(
     )
 
     if existing_user:
-        return {
-            "success": False,
-            "message": "Email already registered"
-        }
+        # Previously returned HTTP 200 with {success: false}, which the frontend's
+        # request() helper treats as a successful response (it only throws on non-2xx).
+        # That silently let a duplicate-email registration fall through as if it worked.
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered",
+        )
 
     user = User(
         name=payload.name,
@@ -56,10 +59,22 @@ def register(
     db.add(subscription)
     db.commit()
 
+    # Previously this endpoint never issued a token at all, so a *successful*
+    # registration still left the frontend calling setToken(undefined) and
+    # navigating to the dashboard with no valid session.
+    token = create_access_token(
+        {
+            "user_id": user.id,
+            "email": user.email
+        }
+    )
+
     return {
         "success": True,
         "user_id": user.id,
-        "email": user.email
+        "email": user.email,
+        "access_token": token,
+        "token_type": "bearer",
     }
 
 @router.post("/login")
@@ -73,20 +88,15 @@ def login(
         .first()
     )
 
-    if not user:
-        return {
-            "success": False,
-            "message": "Invalid credentials"
-        }
-
-    if not verify_password(
-        payload.password,
-        user.password
-    ):
-        return {
-            "success": False,
-            "message": "Invalid credentials"
-        }
+    # Previously both of these returned HTTP 200 with {success: false}. The frontend's
+    # request() helper only throws on a non-2xx status, so a wrong password resolved as
+    # a "successful" response with no access_token — login.tsx then stored an undefined
+    # token and navigated to /dashboard as if the login had worked.
+    if not user or not verify_password(payload.password, user.password):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials",
+        )
 
     token = create_access_token(
         {
@@ -117,6 +127,34 @@ def me(
             "success": False,
             "message": "User not found"
         }
+
+    return {
+        "success": True,
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+    }
+
+
+@router.patch("/me")
+def update_me(
+    payload: UpdateProfileRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user = (
+        db.query(User)
+        .filter(User.id == current_user["user_id"])
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.name = payload.name
+
+    db.commit()
+    db.refresh(user)
 
     return {
         "success": True,

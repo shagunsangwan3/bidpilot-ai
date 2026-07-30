@@ -1,8 +1,12 @@
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
+import os
 
-SECRET_KEY = "super-secret-key-change-later"
+# NOTE: previously hardcoded as "super-secret-key-change-later" directly in source
+# control. Falls back to that only for local dev; set JWT_SECRET_KEY in the real
+# environment before deploying anywhere real users can reach.
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key-change-later")
 ALGORITHM = "HS256"
 
 pwd_context = CryptContext(

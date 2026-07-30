@@ -11,8 +11,6 @@ def get_current_user(
 ):
     token = credentials.credentials
 
-    print("TOKEN:", token)
-
     try:
         payload = jwt.decode(
             token,
@@ -20,13 +18,9 @@ def get_current_user(
             algorithms=[ALGORITHM]
         )
 
-        print("PAYLOAD:", payload)
-
         return payload
 
-    except Exception as e:
-        print("JWT ERROR:", str(e))
-
+    except Exception:
         raise HTTPException(
             status_code=401,
             detail="Invalid token"

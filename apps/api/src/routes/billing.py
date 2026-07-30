@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.core.auth import get_current_user
 from src.models.subscription import Subscription
+from src.models.payment import Payment
 
 router = APIRouter(
     prefix="/billing",
@@ -54,8 +55,32 @@ def billing_overview(
     }
 
 @router.get("/history")
-def billing_history():
-    return []
+def billing_history(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    # NOTE: nothing in this codebase currently inserts Payment rows (no Razorpay
+    # webhook handler exists yet to record completed payments) — this will keep
+    # returning an empty list until that's built. Wiring it to the real table now
+    # so it starts working the moment payments are recorded, instead of a
+    # hardcoded [] that would silently mask that gap forever.
+    payments = (
+        db.query(Payment)
+        .filter(Payment.user_id == current_user["user_id"])
+        .order_by(Payment.created_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": str(p.id),
+            "date": p.created_at.isoformat() if p.created_at else None,
+            "amount": p.amount,
+            "currency": p.currency,
+            "status": p.status,
+        }
+        for p in payments
+    ]
 
 @router.get("/payment-method")
 def payment_method(
