@@ -183,6 +183,7 @@ def _serialize_user(user: User) -> dict:
         "cover_image_url": (
             "/auth/me/cover-image" if user.cover_image_path else None
         ),
+        "password_changed_at": user.password_changed_at,
     }
 
 
