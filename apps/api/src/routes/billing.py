@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from src.database import get_db
-from src.core.auth import get_current_user
+from src.core.auth import require_min_role
 from src.models.subscription import Subscription
 from src.models.payment import Payment
 
@@ -15,12 +15,12 @@ router = APIRouter(
 @router.get("/overview")
 def billing_overview(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_min_role("admin")),
 ):
     subscription = (
         db.query(Subscription)
         .filter(
-            Subscription.user_id == current_user["user_id"]
+            Subscription.organization_id == current_user["organization_id"]
         )
         .first()
     )
@@ -57,7 +57,7 @@ def billing_overview(
 @router.get("/history")
 def billing_history(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_min_role("admin")),
 ):
     # NOTE: nothing in this codebase currently inserts Payment rows (no Razorpay
     # webhook handler exists yet to record completed payments) — this will keep
@@ -66,7 +66,7 @@ def billing_history(
     # hardcoded [] that would silently mask that gap forever.
     payments = (
         db.query(Payment)
-        .filter(Payment.user_id == current_user["user_id"])
+        .filter(Payment.organization_id == current_user["organization_id"])
         .order_by(Payment.created_at.desc())
         .all()
     )
@@ -84,13 +84,13 @@ def billing_history(
 
 @router.get("/payment-method")
 def payment_method(
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_min_role("admin")),
     db: Session = Depends(get_db),
 ):
     subscription = (
         db.query(Subscription)
         .filter(
-            Subscription.user_id == current_user["user_id"]
+            Subscription.organization_id == current_user["organization_id"]
         )
         .first()
     )

@@ -36,6 +36,16 @@ class Lead(Base):
         index=True,
     )
 
+    # Scoping/authorization field for team-shared visibility — user_id above
+    # stays as "who created this," organization_id is what queries actually
+    # filter on so teammates see each other's leads.
+    organization_id = Column(
+        Integer,
+        ForeignKey("organizations.id"),
+        nullable=True,
+        index=True,
+    )
+
     # -----------------------------
     # Client Information
     # -----------------------------

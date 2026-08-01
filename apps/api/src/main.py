@@ -23,6 +23,8 @@ from src.routes.notification import router as notification_router
 from src.models.subscription import Subscription
 from src.routes.subscription import router as subscription_router
 from src.routes.proposal_template import router as proposal_template_router
+from src.routes.organization import router as organization_router
+from src.routes.organization import router as organization_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -56,6 +58,7 @@ app.include_router(billing_router)
 app.include_router(notification_router)
 app.include_router(subscription_router)
 app.include_router(proposal_template_router)
+app.include_router(organization_router)
 
 @app.get("/")
 def root():

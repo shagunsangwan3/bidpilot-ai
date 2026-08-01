@@ -28,6 +28,7 @@ from src.models.payment import Payment
 from src.models.proposal_template import ProposalTemplate
 from src.models.email import Email
 from src.models.login_session import LoginSession
+from src.models.organization import Organization, OrganizationInvite
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

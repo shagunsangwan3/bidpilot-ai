@@ -20,6 +20,12 @@ router = APIRouter(
 
 from src.core.auth import get_current_user
 
+# CRITICAL: every route in this file previously had no current_user dependency
+# at all — GET/PUT/DELETE required no authentication whatsoever, meaning
+# anyone (logged in or not) could list every proposal from every user in the
+# database, or edit/delete any proposal by guessing its ID. Every route below
+# now requires auth and scopes to the caller's organization.
+
 @router.post("/")
 async def create_proposal(
     payload: ProposalRequest,
@@ -28,10 +34,9 @@ async def create_proposal(
 ):
 
     subscription = check_proposal_limit(
-    db=db,
-    user_id=current_user["user_id"],
+        db=db,
+        organization_id=current_user["organization_id"],
     )
-    
 
     proposal = await generate_proposal(
         payload.job_title,
@@ -51,12 +56,27 @@ async def create_proposal(
 @router.post("/save")
 def save_proposal(
     payload: ProposalCreate,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    lead = (
+        db.query(Lead)
+        .filter(
+            Lead.id == payload.lead_id,
+            Lead.organization_id == current_user["organization_id"],
+        )
+        .first()
+    )
+
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
     proposal = Proposal(
         lead_id=payload.lead_id,
         title=payload.title,
         content=payload.content,
+        organization_id=current_user["organization_id"],
+        created_by=current_user["user_id"],
     )
 
     db.add(proposal)
@@ -64,12 +84,12 @@ def save_proposal(
     db.refresh(proposal)
 
     log_activity(
-    db=db,
-    lead_id=proposal.lead_id,
-    action="Proposal Saved",
-    description=f"Proposal '{proposal.title}' was saved.",
-)
-    
+        db=db,
+        lead_id=proposal.lead_id,
+        action="Proposal Saved",
+        description=f"Proposal '{proposal.title}' was saved.",
+    )
+
     return {
         "id": proposal.id,
         "message": "Proposal saved successfully",
@@ -77,46 +97,48 @@ def save_proposal(
 
 @router.get("/")
 def get_proposals(
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     proposals = (
         db.query(Proposal, Lead)
-        .join(
-            Lead,
-            Proposal.lead_id == Lead.id
+        .join(Lead, Proposal.lead_id == Lead.id)
+        .filter(Proposal.organization_id == current_user["organization_id"])
+        .order_by(Proposal.created_at.desc())
+        .all()
     )
-    .order_by(
-        Proposal.created_at.desc()
-    )
-    .all()
-)
     return [
-    {
-        "id": proposal.id,
-        "lead_id": proposal.lead_id,
-        "title": proposal.title,
-        "content": proposal.content,
-        "created_at": proposal.created_at,
+        {
+            "id": proposal.id,
+            "lead_id": proposal.lead_id,
+            "title": proposal.title,
+            "content": proposal.content,
+            "created_at": proposal.created_at,
 
-        "client_name": lead.client_name,
-        "client_email": lead.client_email,
+            "client_name": lead.client_name,
+            "client_email": lead.client_email,
 
-        "lead_title": lead.title,
-        "budget": lead.budget,
-        "status": lead.status,
-    }
-    for proposal, lead in proposals
-]
+            "lead_title": lead.title,
+            "budget": lead.budget,
+            "currency": lead.currency,
+            "status": lead.status,
+        }
+        for proposal, lead in proposals
+    ]
 
 @router.put("/{proposal_id}")
 def update_proposal(
     proposal_id: int,
     payload: ProposalCreate,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     proposal = (
         db.query(Proposal)
-        .filter(Proposal.id == proposal_id)
+        .filter(
+            Proposal.id == proposal_id,
+            Proposal.organization_id == current_user["organization_id"],
+        )
         .first()
     )
 
@@ -138,11 +160,15 @@ def update_proposal(
 @router.delete("/{proposal_id}")
 def delete_proposal(
     proposal_id: int,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     proposal = (
         db.query(Proposal)
-        .filter(Proposal.id == proposal_id)
+        .filter(
+            Proposal.id == proposal_id,
+            Proposal.organization_id == current_user["organization_id"],
+        )
         .first()
     )
 
@@ -153,10 +179,10 @@ def delete_proposal(
         )
 
     log_activity(
-    db=db,
-    lead_id=proposal.lead_id,
-    action="Proposal Deleted",
-    description=f"Proposal '{proposal.title}' was deleted.",
+        db=db,
+        lead_id=proposal.lead_id,
+        action="Proposal Deleted",
+        description=f"Proposal '{proposal.title}' was deleted.",
     )
 
     db.delete(proposal)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Text, DateTime
+from sqlalchemy import Column, Integer, String, Date, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from src.database import Base
 
@@ -58,6 +58,13 @@ class User(Base):
     # stateless and can't otherwise be individually invalidated before they
     # expire.
     token_version = Column(Integer, nullable=False, default=1, server_default="1")
+
+    # --- Organization / team membership ---
+    # Each user belongs to exactly one organization (a "team of one" for solo
+    # users, auto-created at registration). role is their permission level
+    # within it — see models/organization.py's ROLE_RANK.
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    role = Column(String(20), nullable=False, default="owner", server_default="owner")
 
     updated_at = Column(
         DateTime(timezone=True),

@@ -46,7 +46,7 @@ def upload_attachment(
         db.query(Lead)
         .filter(
             Lead.id == lead_id,
-            Lead.user_id == current_user["user_id"],
+            Lead.organization_id == current_user["organization_id"],
         )
         .first()
     )
@@ -85,7 +85,7 @@ def get_attachments(
         db.query(Lead)
         .filter(
             Lead.id == lead_id,
-            Lead.user_id == current_user["user_id"],
+            Lead.organization_id == current_user["organization_id"],
         )
         .first()
     )
@@ -116,7 +116,7 @@ def download_attachment(
         .join(Lead, Lead.id == Attachment.lead_id)
         .filter(
             Attachment.id == attachment_id,
-            Lead.user_id == current_user["user_id"],
+            Lead.organization_id == current_user["organization_id"],
         )
         .first()
     )

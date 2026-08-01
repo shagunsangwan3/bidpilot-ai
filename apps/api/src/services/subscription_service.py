@@ -6,11 +6,11 @@ from src.models.subscription import Subscription
 
 def check_proposal_limit(
     db: Session,
-    user_id: int,
+    organization_id: int,
 ):
     subscription = (
         db.query(Subscription)
-        .filter(Subscription.user_id == user_id)
+        .filter(Subscription.organization_id == organization_id)
         .first()
     )
 

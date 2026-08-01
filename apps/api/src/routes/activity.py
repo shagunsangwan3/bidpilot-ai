@@ -23,7 +23,7 @@ def get_activities(
         db.query(Lead)
         .filter(
             Lead.id == lead_id,
-            Lead.user_id == current_user["user_id"],
+            Lead.organization_id == current_user["organization_id"],
         )
         .first()
     )

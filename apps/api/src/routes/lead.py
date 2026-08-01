@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from src.core.dependencies import get_db
-from src.core.auth import get_current_user
+from src.core.auth import get_current_user, require_min_role
 
 from src.models.lead import Lead
 from src.schemas.lead import LeadCreate, LeadUpdate
@@ -22,12 +22,13 @@ router = APIRouter(
 @router.post("/")
 def create_lead(
     payload: LeadCreate,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_min_role("sales")),
     db: Session = Depends(get_db),
 ):
     lead = Lead(
         **payload.model_dump(),
         user_id=current_user["user_id"],
+        organization_id=current_user["organization_id"],
     )
 
     db.add(lead)
@@ -65,8 +66,11 @@ def get_leads(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Scoped by organization (shared team pipeline), not the individual
+    # caller — previously this was Lead.user_id, which meant a teammate
+    # could never see leads a colleague created.
     query = db.query(Lead).filter(
-        Lead.user_id == current_user["user_id"]
+        Lead.organization_id == current_user["organization_id"]
     )
 
     if search:
@@ -105,7 +109,7 @@ def get_lead(
         db.query(Lead)
         .filter(
             Lead.id == lead_id,
-            Lead.user_id == current_user["user_id"],
+            Lead.organization_id == current_user["organization_id"],
         )
         .first()
     )
@@ -126,14 +130,14 @@ def get_lead(
 def update_lead(
     lead_id: int,
     payload: LeadUpdate,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_min_role("sales")),
     db: Session = Depends(get_db),
 ):
     lead = (
         db.query(Lead)
         .filter(
             Lead.id == lead_id,
-            Lead.user_id == current_user["user_id"],
+            Lead.organization_id == current_user["organization_id"],
         )
         .first()
     )
@@ -161,14 +165,14 @@ def update_lead(
 @router.delete("/{lead_id}")
 def delete_lead(
     lead_id: int,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_min_role("sales")),
     db: Session = Depends(get_db),
 ):
     lead = (
         db.query(Lead)
         .filter(
             Lead.id == lead_id,
-            Lead.user_id == current_user["user_id"],
+            Lead.organization_id == current_user["organization_id"],
         )
         .first()
     )

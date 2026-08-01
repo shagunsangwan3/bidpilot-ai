@@ -10,6 +10,7 @@ from src.core.auth import get_current_user
 from src.schemas.auth import RegisterRequest, LoginRequest, UpdateProfileRequest, ChangePasswordRequest
 from src.models.user import User
 from src.models.login_session import LoginSession
+from src.models.organization import Organization, OrganizationInvite, ROLE_RANK, VALID_ROLES
 from src.core.dependencies import get_db
 from src.models.subscription import Subscription
 from src.utils.security import (
@@ -91,8 +92,33 @@ def register(
     db.commit()
     db.refresh(user)
 
+    # If someone invited this email address before they signed up, join that
+    # organization with the invited role instead of getting a personal one.
+    pending_invite = (
+        db.query(OrganizationInvite)
+        .filter(OrganizationInvite.email == payload.email)
+        .order_by(OrganizationInvite.created_at.desc())
+        .first()
+    )
+
+    if pending_invite:
+        user.organization_id = pending_invite.organization_id
+        user.role = pending_invite.role
+        db.delete(pending_invite)
+    else:
+        organization = Organization(name=f"{user.name}'s Organization", created_by=user.id)
+        db.add(organization)
+        db.commit()
+        db.refresh(organization)
+        user.organization_id = organization.id
+        user.role = "owner"
+
+    db.commit()
+    db.refresh(user)
+
     subscription = Subscription(
     user_id=user.id,
+    organization_id=user.organization_id,
     plan="Free",
     status="active",
     proposal_limit=3,

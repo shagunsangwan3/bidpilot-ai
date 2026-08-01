@@ -11,6 +11,12 @@ class Proposal(Base):
 
     lead_id = Column(Integer, ForeignKey("leads.id"))
 
+    # Proposal had NO ownership field at all before this — every route that
+    # touched it was also missing an auth dependency, so this didn't matter
+    # in practice, but both are fixed together now.
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True, index=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+
     title = Column(String, nullable=False)
 
     content = Column(Text, nullable=False)

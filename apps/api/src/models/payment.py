@@ -29,6 +29,13 @@ class Payment(Base):
         ForeignKey("subscriptions.id"),
     )
 
+    organization_id = Column(
+        Integer,
+        ForeignKey("organizations.id"),
+        nullable=True,
+        index=True,
+    )
+
     amount = Column(Float)
 
     currency = Column(

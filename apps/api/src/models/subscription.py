@@ -21,6 +21,17 @@ class Subscription(Base):
         nullable=False,
     )
 
+    # Billing becomes an organization-level concern — a team subscribes
+    # together, not each member individually. user_id above is kept as
+    # "who originally set this up," organization_id is what billing/
+    # subscription routes actually query and enforce against.
+    organization_id = Column(
+        Integer,
+        ForeignKey("organizations.id"),
+        nullable=True,
+        index=True,
+    )
+
     plan = Column(String(30), default="Free")
 
     status = Column(String(30), default="active")

@@ -17,11 +17,13 @@ def dashboard_summary(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    user_id = current_user["user_id"]
+    # Org-wide dashboard — a teammate's leads count toward the shared
+    # pipeline, not just the caller's own.
+    organization_id = current_user["organization_id"]
 
     leads = (
         db.query(Lead)
-        .filter(Lead.user_id == user_id)
+        .filter(Lead.organization_id == organization_id)
         .all()
     )
 
