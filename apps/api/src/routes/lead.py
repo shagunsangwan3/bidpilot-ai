@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -50,7 +52,12 @@ def create_lead(
     notification_type="lead",
 )
 
-    return lead
+    # NOTE: previously this returned the bare `lead` ORM object directly, which
+    # serialized as an empty {} — GET/PUT on a single lead worked fine returning
+    # the same way, but a freshly created-and-refreshed instance apparently
+    # didn't. Explicit column-to-dict serialization sidesteps whatever the
+    # underlying cause is and is guaranteed correct either way.
+    return {c.name: getattr(lead, c.name) for c in Lead.__table__.columns}
 
 
 # -----------------------------
@@ -152,6 +159,26 @@ def update_lead(
 
     for key, value in updates.items():
         setattr(lead, key, value)
+
+    # is_won/is_lost/revenue/won_at/lost_at existed on this model already but
+    # nothing anywhere ever set them — every update just applied whatever
+    # fields the frontend sent, and the frontend never sent these. Keeping
+    # them in sync with status here means analytics (and anything else that
+    # reads them going forward) reflects real data instead of permanently-
+    # empty columns.
+    if "status" in updates:
+        if updates["status"] == "won":
+            lead.is_won = True
+            lead.is_lost = False
+            lead.revenue = lead.budget
+            lead.won_at = datetime.utcnow()
+        elif updates["status"] == "lost":
+            lead.is_won = False
+            lead.is_lost = True
+            lead.lost_at = datetime.utcnow()
+        else:
+            lead.is_won = False
+            lead.is_lost = False
 
     db.commit()
     db.refresh(lead)
