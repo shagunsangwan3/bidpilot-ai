@@ -210,6 +210,7 @@ def _serialize_user(user: User) -> dict:
             "/auth/me/cover-image" if user.cover_image_path else None
         ),
         "password_changed_at": user.password_changed_at,
+        "has_completed_onboarding": user.has_completed_onboarding,
     }
 
 
@@ -495,3 +496,18 @@ def revoke_other_sessions(
         "access_token": new_token,
         "token_type": "bearer",
     }
+
+
+@router.post("/onboarding/complete")
+def complete_onboarding(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == current_user["user_id"]).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.has_completed_onboarding = True
+    db.commit()
+
+    return {"success": True}

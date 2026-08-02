@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, Text, DateTime, ForeignKey, Boolean
 from sqlalchemy.sql import func
 from src.database import Base
 
@@ -65,6 +65,8 @@ class User(Base):
     # within it — see models/organization.py's ROLE_RANK.
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     role = Column(String(20), nullable=False, default="owner", server_default="owner")
+
+    has_completed_onboarding = Column(Boolean, nullable=False, default=False, server_default="false")
 
     updated_at = Column(
         DateTime(timezone=True),
