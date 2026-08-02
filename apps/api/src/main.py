@@ -25,6 +25,7 @@ from src.routes.subscription import router as subscription_router
 from src.routes.proposal_template import router as proposal_template_router
 from src.routes.organization import router as organization_router
 from src.routes.analytics import router as analytics_router
+from src.routes.ai_assistant import router as ai_assistant_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -60,6 +61,7 @@ app.include_router(subscription_router)
 app.include_router(proposal_template_router)
 app.include_router(organization_router)
 app.include_router(analytics_router)
+app.include_router(ai_assistant_router)
 
 @app.get("/")
 def root():
